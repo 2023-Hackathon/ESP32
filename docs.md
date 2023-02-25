@@ -1,3 +1,8 @@
+## UUID
+
+SERVICE_UUID        "02afd1d9-f889-4f49-acc7-33b34a620adb"
+CHARACTERISTIC_UUID "3604da64-2145-422a-89c6-c540392c3a6a"
+
 ## ESP32 获取当前时间
 
 协议编号：0x01
