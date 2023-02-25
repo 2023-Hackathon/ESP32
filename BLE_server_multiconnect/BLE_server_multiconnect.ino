@@ -11,12 +11,34 @@ bool oldDeviceConnected = false;
 #define SERVICE_UUID        "02afd1d9-f889-4f49-acc7-33b34a620adb"
 #define CHARACTERISTIC_UUID "3604da64-2145-422a-89c6-c540392c3a6a"
 
-struct PayloadPacket {
-  uint32_t timestamp;
-  uint16_t data;
+std::string encode_packet(uint16_t data);
+
+std::string encode_payload();
+
+#define LENGTH 30
+
+struct CircularQueue {
+  uint16_t data[LENGTH];
+  int start = 0;
+  int capacity = 0;
+
+  const uint16_t &operator[](int idx) const {
+    return data[(start + idx) % LENGTH];
+  }
+
+  uint16_t &operator[](int idx) { return data[(start + idx) % LENGTH]; }
+
+  void append(uint16_t val) {
+    if (capacity == LENGTH) {
+      data[start] = val;
+      start = (start + 1) % LENGTH;
+      return;
+    }
+    data[capacity++] = val;
+  }
 };
 
-std::string encode_packet(PayloadPacket packet);
+CircularQueue queue;
 
 class MyServerCallbacks: public BLEServerCallbacks {
     void onConnect(BLEServer* pServer) {
@@ -35,12 +57,16 @@ class MyCallbacks: public BLECharacteristicCallbacks {
       if (value.length() > 0) {
         Serial.println("*********");
         Serial.print("New value: ");
-        for (int i = 0; i < value.length(); i++)
-          Serial.print(value[i]);
-
-        Serial.println();
-        pCharacteristic->setValue("Result");
-        Serial.println("Sent results");
+        Serial.println(value.c_str());
+        if (value == "1") {
+          std::string data = encode_payload();
+          pCharacteristic->setValue(data);
+          pCharacteristic->notify();
+          Serial.println("Sent results");
+        }
+        else {
+          Serial.println("Wrong value");
+        }
         Serial.println("*********");
       }
     }
@@ -48,7 +74,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 
 void setup() {
   Serial.begin(115200);
-
+  srand((unsigned) time(NULL));
   // Create the BLE Device
   BLEDevice::init("ESP32-Edge");
 
@@ -86,12 +112,11 @@ void setup() {
 }
 
 void loop() {
+    uint16_t packet = rand() % 4096;
+    queue.append(packet);
     // notify changed value
     if (deviceConnected) {
-        PayloadPacket packet = { 0xDEADBEEF, 0xB00F};
-        std::string data = encode_packet(packet);
-        pCharacteristic->setValue(data);
-        pCharacteristic->notify();
+        Serial.println(encode_payload().c_str());
     }
     // disconnecting
     if (!deviceConnected && oldDeviceConnected) {
@@ -105,9 +130,17 @@ void loop() {
         // do stuff here on connecting
         oldDeviceConnected = deviceConnected;
     }
-    delay(100); // bluetooth stack will go into congestion, if too many packets are sent, in 6 hours test i was able to go as low as 3ms
+    delay(1000); // bluetooth stack will go into congestion, if too many packets are sent, in 6 hours test i was able to go as low as 3ms
 }
 
-std::string encode_packet(PayloadPacket packet) {
-  return std::to_string(packet.timestamp) + '#' + std::to_string(packet.data) + '@';
+std::string encode_packet(uint16_t data) {
+  return std::to_string(data) + '@';
+}
+
+std::string encode_payload() {
+  std::string payload = "";
+  for (int i = 0; i < queue.capacity; i++) {
+    payload += encode_packet(queue[i]);
+  }
+  return payload;
 }
