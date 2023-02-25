@@ -109,5 +109,5 @@ void loop() {
 }
 
 std::string encode_packet(PayloadPacket packet) {
-  return std::to_string(packet.timestamp) + '#' + std::to_string(packet.data);
+  return std::to_string(packet.timestamp) + '#' + std::to_string(packet.data) + '@';
 }
