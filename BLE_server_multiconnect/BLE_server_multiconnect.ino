@@ -36,6 +36,10 @@ struct CircularQueue {
     }
     data[capacity++] = val;
   }
+  void clear() {
+    start = 0;
+    capacity = 0;
+  }
 };
 
 CircularQueue queue;
@@ -60,6 +64,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         Serial.println(value.c_str());
         if (value == "1") {
           std::string data = encode_payload();
+          queue.clear();
           Serial.println(data.c_str());
           pCharacteristic->setValue(data);
           pCharacteristic->notify();
@@ -72,6 +77,14 @@ class MyCallbacks: public BLECharacteristicCallbacks {
       }
     }
 };
+
+const int potPin = 34;
+const double Vin=3.3;
+double Vout=0;
+const double R1=5000000;    //value of known resistance
+double R2=0;       //value of unknown resistance
+int a2d_data=0;    
+double buffer=0; 
 
 void setup() {
   Serial.begin(115200);
@@ -113,8 +126,20 @@ void setup() {
 }
 
 void loop() {
-    uint16_t packet = rand() % 4096;
-    queue.append(packet);
+    a2d_data = analogRead(potPin);
+    if(a2d_data)
+    {
+      Serial.print("Read: ");
+      Serial.println(a2d_data);
+      buffer=a2d_data*Vin;
+      Vout=(buffer)/4096.0;
+      buffer=Vout/(Vin-Vout); 
+      R2=R1*buffer;
+      Serial.print("Resistance: ");
+      Serial.println(R2);
+      uint16_t packet = (uint16_t) R2 * 100;
+      queue.append(packet);
+    }
     // notify changed value
     // disconnecting
     if (!deviceConnected && oldDeviceConnected) {
