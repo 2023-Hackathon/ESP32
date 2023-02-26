@@ -60,6 +60,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
         Serial.println(value.c_str());
         if (value == "1") {
           std::string data = encode_payload();
+          Serial.println(data.c_str());
           pCharacteristic->setValue(data);
           pCharacteristic->notify();
           Serial.println("Sent results");
@@ -115,9 +116,6 @@ void loop() {
     uint16_t packet = rand() % 4096;
     queue.append(packet);
     // notify changed value
-    if (deviceConnected) {
-        Serial.println(encode_payload().c_str());
-    }
     // disconnecting
     if (!deviceConnected && oldDeviceConnected) {
         delay(500); // give the bluetooth stack the chance to get things ready
